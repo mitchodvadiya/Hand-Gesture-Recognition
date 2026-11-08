@@ -1,0 +1,260 @@
+{
+    "checkpoint": "D:\\SEM_5\\DSIP\\Research_Code\\python_code\\checkpoints\\best_model_enhanced.pth",
+    "checkpoint_epoch": 3,
+    "split": "val",
+    "model_type": "enhanced",
+    "max_users": 5,
+    "batch_size": 64,
+    "postprocess_mode": "1-1",
+    "raw_metrics": {
+        "total_samples": 750,
+        "total_correct": 618,
+        "accuracy": 82.4,
+        "macro_precision": 83.72,
+        "macro_recall": 82.4,
+        "macro_f1": 82.51,
+        "weighted_precision": 83.72,
+        "weighted_recall": 82.4,
+        "weighted_f1": 82.51,
+        "per_class": {
+            "fist": {
+                "precision": 93.81,
+                "recall": 84.8,
+                "f1_score": 89.08,
+                "support": 125,
+                "true_positives": 106,
+                "false_positives": 7,
+                "false_negatives": 19
+            },
+            "open": {
+                "precision": 71.13,
+                "recall": 55.2,
+                "f1_score": 62.16,
+                "support": 125,
+                "true_positives": 69,
+                "false_positives": 28,
+                "false_negatives": 56
+            },
+            "pinch": {
+                "precision": 57.06,
+                "recall": 74.4,
+                "f1_score": 64.58,
+                "support": 125,
+                "true_positives": 93,
+                "false_positives": 70,
+                "false_negatives": 32
+            },
+            "waveIn": {
+                "precision": 98.35,
+                "recall": 95.2,
+                "f1_score": 96.75,
+                "support": 125,
+                "true_positives": 119,
+                "false_positives": 2,
+                "false_negatives": 6
+            },
+            "waveOut": {
+                "precision": 96.36,
+                "recall": 84.8,
+                "f1_score": 90.21,
+                "support": 125,
+                "true_positives": 106,
+                "false_positives": 4,
+                "false_negatives": 19
+            },
+            "noGesture": {
+                "precision": 85.62,
+                "recall": 100.0,
+                "f1_score": 92.25,
+                "support": 125,
+                "true_positives": 125,
+                "false_positives": 21,
+                "false_negatives": 0
+            }
+        },
+        "confusion_matrix": [
+            [
+                106,
+                1,
+                12,
+                1,
+                1,
+                4
+            ],
+            [
+                1,
+                69,
+                53,
+                0,
+                2,
+                0
+            ],
+            [
+                5,
+                9,
+                93,
+                0,
+                1,
+                17
+            ],
+            [
+                1,
+                0,
+                5,
+                119,
+                0,
+                0
+            ],
+            [
+                0,
+                18,
+                0,
+                1,
+                106,
+                0
+            ],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                125
+            ]
+        ],
+        "class_names": [
+            "fist",
+            "open",
+            "pinch",
+            "waveIn",
+            "waveOut",
+            "noGesture"
+        ]
+    },
+    "postprocessed_metrics": {
+        "total_samples": 750,
+        "total_correct": 618,
+        "accuracy": 82.4,
+        "macro_precision": 83.76,
+        "macro_recall": 82.4,
+        "macro_f1": 82.51,
+        "weighted_precision": 83.76,
+        "weighted_recall": 82.4,
+        "weighted_f1": 82.51,
+        "per_class": {
+            "fist": {
+                "precision": 93.81,
+                "recall": 84.8,
+                "f1_score": 89.08,
+                "support": 125,
+                "true_positives": 106,
+                "false_positives": 7,
+                "false_negatives": 19
+            },
+            "open": {
+                "precision": 71.13,
+                "recall": 55.2,
+                "f1_score": 62.16,
+                "support": 125,
+                "true_positives": 69,
+                "false_positives": 28,
+                "false_negatives": 56
+            },
+            "pinch": {
+                "precision": 57.06,
+                "recall": 74.4,
+                "f1_score": 64.58,
+                "support": 125,
+                "true_positives": 93,
+                "false_positives": 70,
+                "false_negatives": 32
+            },
+            "waveIn": {
+                "precision": 99.17,
+                "recall": 95.2,
+                "f1_score": 97.14,
+                "support": 125,
+                "true_positives": 119,
+                "false_positives": 1,
+                "false_negatives": 6
+            },
+            "waveOut": {
+                "precision": 96.36,
+                "recall": 84.8,
+                "f1_score": 90.21,
+                "support": 125,
+                "true_positives": 106,
+                "false_positives": 4,
+                "false_negatives": 19
+            },
+            "noGesture": {
+                "precision": 85.03,
+                "recall": 100.0,
+                "f1_score": 91.91,
+                "support": 125,
+                "true_positives": 125,
+                "false_positives": 22,
+                "false_negatives": 0
+            }
+        },
+        "confusion_matrix": [
+            [
+                106,
+                1,
+                12,
+                1,
+                1,
+                4
+            ],
+            [
+                1,
+                69,
+                53,
+                0,
+                2,
+                0
+            ],
+            [
+                5,
+                9,
+                93,
+                0,
+                1,
+                17
+            ],
+            [
+                1,
+                0,
+                5,
+                119,
+                0,
+                0
+            ],
+            [
+                0,
+                18,
+                0,
+                0,
+                106,
+                1
+            ],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                125
+            ]
+        ],
+        "class_names": [
+            "fist",
+            "open",
+            "pinch",
+            "waveIn",
+            "waveOut",
+            "noGesture"
+        ]
+    },
+    "postprocess_gain": 0.0
+}

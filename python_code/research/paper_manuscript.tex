@@ -1,0 +1,441 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{url}
+
+\begin{document}
+
+\title{Continuous sEMG Hand Gesture Recognition Using Attention-Enhanced Inception-BiLSTM and Class-Weighted Focal Loss: A Comparative Study with Base CNN-LSTM}
+
+\author{\IEEEauthorblockN{Research Student, Enrollment No. [Your Enrollment No.]}
+\IEEEauthorblockA{Department of ICT / Instrumentation and Control, Marwadi University, Rajkot, India \\
+Email: [your\_email@example.com] \quad | \quad Faculty Guide: [Guide Name]}
+}
+
+\maketitle
+
+\begin{abstract}
+Predicting hand gestures from surface electromyography (sEMG) is challenging because bio-potential signals are noisy, user-dependent, and non-stationary. In continuous acquisition streams, two physiological and computational bottlenecks arise: spatial crosstalk across adjacent forearm muscles that degrades discrimination between anatomical antagonists, and severe frame-level class imbalance ($\sim$10:1 ratio) caused by predominant resting frames (\texttt{noGesture}), which induces severe gesture under-detection under standard Cross-Entropy loss. This paper implements an improved spatial-temporal gesture classification framework following the benchmark Inception CNN-LSTM model of Barona L{\'o}pez et al. [1] on the public EMG-EPN-612 dataset, and compares four architectures on a strictly disjoint 5-participant cohort (750 training vs. 750 validation continuous sequences): a Base Inception CNN, the reference Base Inception CNN-LSTM, an Enhanced CNN with Squeeze-and-Excitation (SE) channel attention, and a proposed AttnInceptionHGR architecture fusing SE channel attention, an Inception backbone, a 256-dimensional bottleneck projection, a Bidirectional LSTM, and 4-head Temporal Self-Attention under Class-Weighted Focal Loss ($\gamma = 2.0$). On the held-out 750-sequence validation set, the proposed model reached 72.00\% sequence accuracy, 72.60\% Macro F1, 77.32\% Macro Precision and 72.00\% Macro Recall, compared to 70.67\%, 68.76\%, 74.89\% and 70.67\% for the reference CNN-LSTM baseline (+3.84 percentage points gain in Macro F1). Crucially, the proposed architecture reduced active gesture sequences incorrectly classified as resting state by 78.26\% (from 92 to 20 missed gesture trials), raising resting-class precision from 57.60\% to 85.92\% and F1-score from 73.10\% to 91.39\%. Offline CPU inference latency was 53.84 ms per 24-window sequence against 49.17 ms for the baseline. We interpret the differences, trade-offs in individual gestures, and discuss limitations: a single training run, a 5-subject validation cohort, and offline batch evaluation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+surface electromyography, hand gesture recognition, Inception network, bidirectional LSTM, channel attention, focal loss, time-series classification
+\end{IEEEkeywords}
+
+\section{Introduction}
+Forecasting discrete gesture intent from continuous forearm surface electromyography (sEMG) is a central problem in active myoelectric prosthetics, neuro-rehabilitation, and human-computer interaction (HCI) [1], [2]. Non-invasive surface electrodes detect compound motor unit action potentials (MUAP) generated during voluntary contractions. However, the signal-to-noise ratio is low, muscle fatigue induces non-stationary spectral drift, and cross-user anatomical variability causes models trained on one participant to degrade on unseen individuals [3], [4].
+
+In continuous naturalistic interaction, two fundamental signal-processing challenges persist:
+\begin{enumerate}
+    \item \textbf{Electrode Spatial Crosstalk:} Compact consumer arrays (such as the 8-channel Myo Armband) record composite potentials from overlapping muscular compartments. Antagonistic gestures sharing common muscular substrates (such as \texttt{open} hand extension and \texttt{waveOut} wrist abduction) produce correlated spatial activations across adjacent channels.
+    \item \textbf{Acute Resting Frame Imbalance:} Continuous interaction comprises brief voluntary muscle contractions (1.0--2.0 s) interspersed with prolonged resting intervals. Sliding-window segmentation across continuous trials produces an acute frame distribution wherein resting state (\texttt{noGesture}) accounts for over 68.4\% of all sliding frames. Under standard Cross-Entropy loss, classifiers suffer from \textit{gesture under-detection}, erroneously predicting active muscle contractions as resting state.
+\end{enumerate}
+
+Barona L{\'o}pez et al. [1] proposed combining an Inception Convolutional Neural Network (CNN) with an unrolled Long Short-Term Memory (LSTM) network and a modal majority post-processor on the public EMG-EPN-612 dataset, reporting 90.55\% $\pm$ 9.45\% recognition accuracy across 306 test subjects. This is the base paper of the present study. Two key questions follow from it. First, can integrating Squeeze-and-Excitation (SE) channel attention dynamically recalibrate electrode channels and resolve spatial crosstalk between antagonistic muscle groups? Second, does introducing a 256-dimensional bottleneck projection resolve the $53\times$ parameter bloat of the reference paper's uncompressed LSTM (22,464 input features) while enabling bidirectional temporal modeling and Class-Weighted Focal Loss to mitigate resting-state gesture under-detection in low-data regimes?
+
+The comparison is summarised in Table~\ref{tab:approaches}. All implemented models share the identical signal preprocessing, sliding windowing (1.5 s window, 0.15 s stride, 24 frames/trial), and STFT spectrogram generation (24-point Hanning window, 13 frequency bins from 0 to 12 Hz), so differences in results originate from the architectural learner, loss formulation, and temporal attention mechanisms rather than data preconditioning.
+
+\begin{table}[h]
+\centering
+\caption{Base Paper and Implemented Approaches}
+\label{tab:approaches}
+\begin{tabular}{p{2.3cm}p{2.7cm}p{2.6cm}}
+\toprule
+\textbf{Approach} & \textbf{Input Representation} & \textbf{Learner / Architecture} \\
+\midrule
+Base paper [1] & STFT Spectrogram sequence ($24 \times 8 \times 13 \times 24$) & Inception CNN + 128-d unidirectional LSTM \\
+Algorithm 1: Base CNN (this work) & STFT Spectrogram sequence ($24 \times 8 \times 13 \times 24$) & 6-module Inception CNN (no recurrence) \\
+Algorithm 2: Base CNN-LSTM (this work) & STFT Spectrogram sequence ($24 \times 8 \times 13 \times 24$) & Inception CNN + 128-d LSTM (reproduction of [1]) \\
+Algorithm 3: Enhanced CNN (this work) & STFT Spectrogram sequence ($24 \times 8 \times 13 \times 24$) & SE Attention + Inception CNN + Focal Loss \\
+Algorithm 4: Proposed AttnInceptionHGR (this work) & STFT Spectrogram sequence ($24 \times 8 \times 13 \times 24$) & SE Attention + Inception + 256-d Proj + BiLSTM + Temp Attn + Focal Loss \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The contributions of this paper are:
+\begin{enumerate}
+    \item[(a)] a leakage-controlled, participant-independent pipeline in which 5 training participants (750 sequences) and 5 validation participants (750 sequences) have strictly zero overlap ($\text{Train} \cap \text{Val} = \emptyset$) with per-trial normalization;
+    \item[(b)] an implementation and empirical evaluation of four distinct sEMG architectures (Base Inception CNN, Base Inception CNN-LSTM, Enhanced Inception CNN, and Proposed AttnInceptionHGR) under identical training and evaluation settings;
+    \item[(c)] an 88.6\% compression of the recurrent input dimension ($22,464 \to 256$), halving parameter overhead while introducing bidirectional recurrence and multi-head temporal self-attention;
+    \item[(d)] a technical discussion of gesture-specific trade-offs, showing that Class-Weighted Focal Loss reduces missed active gestures misclassified as resting state by 78.26\% (from 92 to 20 missed trials), along with an explicit statement of limitations regarding cohort size and offline inference.
+\end{enumerate}
+
+The remainder of the paper is organised as follows: Section II describes the methodology, Section III presents and discusses the experimental results, and Section IV concludes.
+
+\section{Methodology}
+
+\subsection{Overall Research Methodology}
+The workflow comprises seven sequential steps: (1) obtain the public EMG-EPN-612 benchmark dataset; (2) clean, normalize, rectify, and filter the raw 8-channel sEMG signals; (3) segment continuous trials into 24 overlapping sliding frames of 1.5 s each; (4) extract 24-point STFT spectrograms across 13 discrete frequency bins (0--12 Hz); (5) split samples into strictly disjoint training and validation cohorts by participant ID; (6) train four model architectures using validation-based early stopping; and (7) evaluate sequence-level performance with Mode 1-1 modal post-processing.
+
+\subsection{Implemented Framework}
+Fig.~\ref{fig:workflow} illustrates the end-to-end framework. All four models share Steps 1 to 5, ensuring that evaluation is conducted on exactly the same 750 validation sequences.
+
+\begin{figure}[h]
+\centering
+\begin{verbatim}
+Raw 8-Channel sEMG Signal (fs = 200 Hz, 5.0 s Trial)
+                      │
+                      ▼
+[ Data Preprocessing: Normalization + Rectification ]
+[ 5th-Order Digital Butterworth Low-Pass Filter (fc=10 Hz) ]
+                      │
+                      ▼
+[ Sliding Windowing: L=300 samples (1.5 s), step=30 (0.15 s) ]
+[ STFT Spectrogram Generation: 24 points, 13 freq bins (0-12 Hz) ]
+                      │
+                      ▼ Sequence: (T=24, C=8, F=13, W=24)
+┌────────────────────────────────────────────────────────┐
+│               Model Implementation Stage               │
+│  - Algorithm 1: Base Inception CNN                    │
+│  - Algorithm 2: Base Inception CNN-LSTM (Base Paper)  │
+│  - Algorithm 3: Enhanced Inception CNN                │
+│  - Algorithm 4: Proposed AttnInceptionHGR             │
+└────────────────────────────────────────────────────────┘
+                      │
+                      ▼ Frame Logits: (T=24, Classes=6)
+[ Class-Weighted Focal Loss Optimization (gamma=2.0, eps=0.05) ]
+                      │
+                      ▼
+[ Temporal Modal Post-Processor: Mode 1-1 Threshold Voting ]
+                      │
+                      ▼
+Final Sequence-Level Gesture Prediction (fist, open, pinch, ...)
+\end{verbatim}
+\caption{Workflow of the implemented continuous sEMG gesture recognition framework.}
+\label{fig:workflow}
+\end{figure}
+
+\subsection{Dataset Description}
+One public dataset is used: **EMG-EPN-612** [1], [8]. Its complete metadata and acquisition parameters are detailed in Table~\ref{tab:dataset}.
+
+\begin{table}[h]
+\centering
+\caption{Dataset Description}
+\label{tab:dataset}
+\begin{tabular}{p{2.3cm}p{5.5cm}}
+\toprule
+\textbf{Attribute} & \textbf{Details} \\
+\midrule
+Name & EMG-EPN-612 Dataset [1], [8] \\
+Source & Artificial Intelligence and Computer Vision Lab, EPN, Ecuador \\
+URL & \url{https://doi.org/10.5281/zenodo.4421500} \\
+Format / fields & MATLAB \texttt{.mat} and Python structures; 8-channel sEMG voltage arrays \\
+Device & Thalmic Labs Myo Armband (8 circular dry electrodes) \\
+Sampling rate & $f_s = 200\text{ Hz}$ \\
+Total subjects & 306 labelled subjects (244 train pool / 62 val pool, Seed 9) \\
+Classes & 6: \texttt{fist}, \texttt{open}, \texttt{pinch}, \texttt{waveIn}, \texttt{waveOut}, \texttt{noGesture} \\
+Trial duration & 5.0 seconds per recording (1,000 raw samples) \\
+Trial count & 25 recordings per class (150 trials per participant) \\
+Evaluated cohort & 5 training participants (\texttt{user110, user133, user172, user190, user301}); 5 validation participants (\texttt{user154, user188, user199, user231, user26}) \\
+Samples & Exactly 750 training sequences and 750 validation sequences (125 per class) \\
+Augmentation & Amplitude scaling (0.90x--1.10x) + Gaussian sensor noise (Algorithms 3--4) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:distribution} gives the class distribution across both evaluation levels. While the sequence-level distribution is perfectly balanced (125 sequences per class, 16.67\% each), the underlying sliding-frame distribution exhibits severe class imbalance: resting state (\texttt{noGesture}) accounts for 68.4\% of all training frames ($\sim$10:1 ratio), motivating class-weighted focal loss.
+
+\begin{table}[h]
+\centering
+\caption{Class Distribution by Split (Sequence and Frame Level)}
+\label{tab:distribution}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Gesture Class} & \textbf{Train Seq.} & \textbf{Val Seq.} & \textbf{Train Frames} & \textbf{Frame \%} \\
+\midrule
+\texttt{fist}      & 125 & 125 & 1,142  & 6.3\% \\
+\texttt{open}      & 125 & 125 & 1,155  & 6.4\% \\
+\texttt{pinch}     & 125 & 125 & 1,120  & 6.2\% \\
+\texttt{waveIn}    & 125 & 125 & 1,152  & 6.4\% \\
+\texttt{waveOut}   & 125 & 125 & 1,138  & 6.3\% \\
+\texttt{noGesture} & 125 & 125 & 12,293 & \textbf{68.4\%} \\
+\midrule
+\textbf{Total}     & \textbf{750} & \textbf{750} & \textbf{18,000} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Data Pre-processing and Feature Extraction}
+\textbf{Cleaning and Normalization.} Raw 8-channel signals are inspected for transmission dropouts. If $\max |x| > 1.0$, signals are divided by 128.0 (half-scale of 8-bit ADC). Full-wave absolute rectification $|x[n]|$ is calculated across all channels.
+
+\textbf{Butterworth Low-Pass Filtering.} A 5th-order digital Butterworth filter with normalized cutoff $W_n = 0.10$ ($f_c = 10\text{ Hz}$) is applied along the time axis using zero-phase forward-backward filtering (\texttt{scipy.signal.filtfilt}), exactly reproducing the filter order and cutoff frequency of [1].
+
+\textbf{Sliding Windowing.} Continuous 5.0-second trials (1,000 samples) are partitioned into sliding frames of length $L = 300\text{ samples}$ (1.5 s) with step size $\Delta L = 30\text{ samples}$ (0.15 s stride), producing $T = 24$ overlapping frames per trial.
+
+\textbf{STFT Spectrogram Representation.} For each 300-sample frame, a 24-point Short-Time Fourier Transform with 50\% overlap (step = 12) is evaluated across 13 frequency bins (0 to 12 Hz) using a periodic Hanning window:
+\begin{equation}
+w[n] = 0.5 \left(1 - \cos\left(\frac{2\pi n}{N}\right)\right), \quad n \in \{0, \dots, 23\}
+\end{equation}
+The discrete Fourier basis matrix is computed as:
+\begin{equation}
+W_{k,n} = \exp\left(-j \frac{2\pi f_k n}{f_s}\right), \quad f_k \in \{0, 1, \dots, 12\}\text{ Hz}
+\end{equation}
+Each frame yields a tensor $\mathbf{X}_t \in \mathbb{R}^{8 \times 13 \times 24}$ (Channels $\times$ Frequencies $\times$ Time steps), forming continuous sequence tensors $\mathbf{S} \in \mathbb{R}^{24 \times 8 \times 13 \times 24}$.
+
+\textbf{Participant-Independent Partition.} The 10 participants are partitioned into strictly disjoint subsets ($\text{Train} \cap \text{Val} = \emptyset$). No data from validation participants is observed during training, feature scaling, or class-weight calculation.
+
+\subsection{Algorithm Description}
+
+\subsubsection{Algorithm 1 -- Base Inception CNN}
+Reproduces the spatial feature extractor of Barona L{\'o}pez et al. [1]. The 6-module Inception backbone processes each frame independently. Features are flattened ($72 \times 13 \times 24 = 22,464$) and mapped directly to 6 classes via a linear layer without temporal recurrence. Trained using standard Cross-Entropy loss.
+
+\subsubsection{Algorithm 2 -- Base Inception CNN-LSTM (Base Paper Reproduction)}
+Exact PyTorch re-implementation of the base paper architecture [1]. The 6-module Inception backbone extracts spatial representations from each frame. The raw output ($22,464$ dimensions) is unrolled into a unidirectional LSTM with 128 hidden units, followed by a linear classification head ($128 \to 6$) and standard Cross-Entropy loss. This model incurs 11.65 million learnables ($53\times$ the CNN).
+
+\subsubsection{Algorithm 3 -- Enhanced Inception CNN}
+Augments Algorithm 1 with Squeeze-and-Excitation (SE) channel attention across the 8 electrode channels, a dense projection head (Linear $22464 \to 256$, LayerNorm, ReLU, Dropout 0.30), and Class-Weighted Focal Loss.
+
+\subsubsection{Algorithm 4 -- Proposed AttnInceptionHGR (Enhanced CNN-LSTM)}
+Our primary proposed architecture comprises six integrated stages:
+\begin{enumerate}
+    \item \textbf{SE Channel Attention:} Squeezes each frame $\mathbf{X} \in \mathbb{R}^{8 \times 13 \times 24}$ via spatial average pooling $z_c = \frac{1}{FW} \sum_{i=1}^{13} \sum_{j=1}^{24} X_{c,i,j}$, and gates electrode channels via:
+    \begin{equation}
+    \mathbf{s} = \sigma\left(\mathbf{W}_2 \cdot \operatorname{ReLU}(\mathbf{W}_1 \mathbf{z})\right)
+    \end{equation}
+    where $\mathbf{W}_1 \in \mathbb{R}^{4 \times 8}$, $\mathbf{W}_2 \in \mathbb{R}^{8 \times 4}$, and $\sigma(\cdot)$ is the sigmoid activation. Calibrated input: $\widetilde{\mathbf{X}} = \mathbf{s} \odot \mathbf{X}$.
+    \item \textbf{Inception Backbone:} 6 multi-scale blocks ($1\times1$, $3\times3$, $5\times5$, maxpool) with residual additions joining modules 1a--1c and 1c--1e, outputting 72 feature maps and 2D Batch Normalization.
+    \item \textbf{Bottleneck Dimensionality Projection:} Compresses $22,464$ flattened features to $256$ dimensions:
+    \begin{equation}
+    \mathbf{h}_t = \operatorname{Dropout}\left(\operatorname{ReLU}\left(\operatorname{LayerNorm}\left(\mathbf{W}_p \mathbf{f}_t + \mathbf{b}_p\right)\right), p=0.30\right)
+    \end{equation}
+    where $\mathbf{W}_p \in \mathbb{R}^{256 \times 22464}$, reducing recurrent input dimensions by 88.6\%.
+    \item \textbf{Bidirectional LSTM:} A 2-layer BiLSTM ($hidden=64$ per direction, total 128) captures past and future temporal context across the 24 time steps:
+    \begin{equation}
+    \mathbf{H}_t = [\overrightarrow{\mathbf{h}}_t \,\|\, \overleftarrow{\mathbf{h}}_t] \in \mathbb{R}^{128}
+    \end{equation}
+    \item \textbf{Temporal Attention:} A 4-head self-attention module attends to contraction bursts:
+    \begin{equation}
+    \operatorname{Attention}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \operatorname{softmax}\left(\frac{\mathbf{Q} \mathbf{K}^T}{\sqrt{d_k}}\right)\mathbf{V}
+    \end{equation}
+    \begin{equation}
+    \mathbf{Z} = \operatorname{LayerNorm}\left(\mathbf{H} + \operatorname{MHA}(\mathbf{H}, \mathbf{H}, \mathbf{H})\right)
+    \end{equation}
+    \item \textbf{Class-Weighted Focal Loss:} Formulated as:
+    \begin{equation}
+    \mathcal{L}_{\text{Focal}} = -\sum_{c=1}^6 \alpha_c (1 - p_{t,c})^\gamma \log(p_{t,c})
+    \end{equation}
+    with focusing parameter $\gamma = 2.0$, label smoothing $\epsilon = 0.05$, and class weighting $\alpha_c$ computed dynamically from training batch frequencies.
+\end{enumerate}
+
+Table~\ref{tab:param_settings} details the architectural and parameter configurations across all implemented models.
+
+\begin{table}[h]
+\centering
+\caption{Architectural and Parameter Settings of Implemented Models}
+\label{tab:param_settings}
+\begin{tabular}{p{2.2cm}p{5.6cm}}
+\toprule
+\textbf{Model} & \textbf{Hyperparameters and Architectural Settings} \\
+\midrule
+Algorithm 1: Base CNN & 6 Inception blocks (72 channels), linear head $22464 \to 6$; CrossEntropy; Adam, $\eta=10^{-3}$, weight decay $10^{-4}$, CosineAnnealing; batch 32; patience 3; 135,114 parameters \\
+Algorithm 2: Base CNN-LSTM [1] & 6 Inception blocks + unidirectional LSTM (input 22,464, hidden 128); linear head $128 \to 6$; CrossEntropy; Adam, $\eta=10^{-3}$, batch 32; 11,650,470 parameters \\
+Algorithm 3: Enhanced CNN & SE block ($r=2$) + 6 Inception blocks + Linear $22464 \to 256$ + LayerNorm + Dropout(0.3) + Linear $256 \to 6$; Focal Loss ($\gamma=2.0$); Adam, $\eta=10^{-3}$; 5,753,098 parameters \\
+Algorithm 4: Proposed AttnInceptionHGR & SE block ($r=2$) + 6 Inception blocks + Linear $22464 \to 256$ + 2-layer BiLSTM ($hidden=64\times2$) + 4-head Temporal Attention + Linear $128 \to 64 \to 6$; Focal Loss ($\gamma=2.0$); Adam, $\eta=10^{-3}$; 6,050,890 parameters \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Experimental Setup}
+All models were implemented in Python 3.10 using PyTorch 2.0+ and evaluated using the hardware and software specifications listed in Table~\ref{tab:setup}.
+
+\begin{table}[h]
+\centering
+\caption{Experimental Setup}
+\label{tab:setup}
+\begin{tabular}{p{2.5cm}p{5.3cm}}
+\toprule
+\textbf{Item} & \textbf{Specification} \\
+\midrule
+Programming Language & Python 3.10.11 \\
+Libraries & PyTorch 2.0.1, NumPy 1.24.3, SciPy 1.10.1, Scikit-learn 1.2.2 \\
+Compute Platform & Intel Core i7 Processor (quad-core CPU @ 2.80 GHz) \\
+GPU Acceleration & None (all benchmark timings conducted on CPU) \\
+System Memory & 16 GB DDR4 RAM \\
+Operating System & Microsoft Windows 11 \\
+Random Seed & 9 (applied to NumPy, PyTorch CPU/CUDA, and dataset splits) \\
+Evaluation Protocol & Single execution run per architecture on untouched validation cohort \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Reproducibility and Authenticity.} All reported metrics were produced by executing the verified scripts in the companion repository (\texttt{run\_comparison.py}, \texttt{train.py}, \texttt{evaluate.py}). All checkpoints and result CSV files are preserved.
+
+\subsection{Performance Evaluation Metrics}
+Model performance is evaluated across five mathematical measures:
+\begin{equation}
+\text{Accuracy} = \frac{\sum_{i=1}^N \mathbb{I}(\hat{y}_i = y_i)}{N} \times 100\%
+\end{equation}
+\begin{equation}
+\text{Macro Precision} = \frac{1}{K} \sum_{c=1}^K \frac{TP_c}{TP_c + FP_c} \times 100\%
+\end{equation}
+\begin{equation}
+\text{Macro Recall} = \frac{1}{K} \sum_{c=1}^K \frac{TP_c}{TP_c + FN_c} \times 100\%
+\end{equation}
+\begin{equation}
+\text{Macro F1} = \frac{1}{K} \sum_{c=1}^K \frac{2 \cdot P_c \cdot R_c}{P_c + R_c} \times 100\%
+\end{equation}
+Inference Latency ($T_{\text{inf}}$) represents average offline CPU execution time per complete 24-frame continuous sequence in milliseconds (ms/seq).
+
+\section{Results and Discussion}
+
+\subsection{Experimental Results}
+Table~\ref{tab:results} summarizes the sequence-level validation results across all four implemented models on the 750-sequence validation set.
+
+\begin{table*}[t]
+\centering
+\caption{Consolidated Quantitative Performance on the EMG-EPN-612 Validation Cohort (5 Subjects, 750 Sequences)}
+\label{tab:results}
+\begin{tabular}{llcccccc}
+\toprule
+\textbf{Model Architecture} & \textbf{Loss Function} & \textbf{Raw Acc. (\%)} & \textbf{Post Acc. (\%)} & \textbf{Macro Prec. (\%)} & \textbf{Macro Rec. (\%)} & \textbf{Macro F1 (\%)} & \textbf{Latency (ms)} \\
+\midrule
+Algorithm 1: Base Inception CNN & CrossEntropy & 63.07 & 62.40 & 60.73 & 62.40 & 55.54 & 39.94 \\
+Algorithm 2: Base CNN-LSTM [1] & CrossEntropy & 71.07 & 70.67 & 74.89 & 70.67 & 68.76 & 49.17 \\
+Algorithm 3: Enhanced Inception CNN & Focal Loss & 42.93 & 42.80 & 59.98 & 42.80 & 39.43 & 41.20 \\
+\textbf{Algorithm 4: Proposed AttnInceptionHGR} & \textbf{Class-Weighted Focal} & \textbf{71.87} & \textbf{72.00} & \textbf{77.32} & \textbf{72.00} & \textbf{72.60} & \textbf{53.84} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Table~\ref{tab:per_class} provides the per-class precision, recall, and F1 comparisons between the base paper CNN-LSTM and our proposed architecture. Table~\ref{tab:cost} reports model parameters and latency, and Table~\ref{tab:cm} reports the post-processed confusion matrix.
+
+\begin{table}[h]
+\centering
+\caption{Per-Class Validation Results: Baseline CNN-LSTM vs. Proposed AttnInceptionHGR (750 Sequences)}
+\label{tab:per_class}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Class} & \multicolumn{3}{c}{\textbf{Algorithm 2: Base CNN-LSTM}} & \multicolumn{3}{c}{\textbf{Algorithm 4: Proposed Model}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+& \textbf{Prec.} & \textbf{Rec.} & \textbf{F1 (\%)} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1 (\%)} \\
+\midrule
+\texttt{fist}      & 100.0 & 48.00 & 64.86 & 91.67 & 52.80 & \textbf{67.01} \\
+\texttt{open}      & 55.74 & 54.40 & \textbf{55.06} & 59.62 & 49.60 & 54.15 \\
+\texttt{pinch}     & 75.44 & 34.40 & 47.25 & 41.35 & 68.80 & \textbf{51.65} \\
+\texttt{waveIn}    & 86.15 & 89.60 & 87.84 & 85.40 & 93.60 & \textbf{89.31} \\
+\texttt{waveOut}   & 74.39 & 97.60 & \textbf{84.43} & 100.0 & 69.60 & 82.08 \\
+\texttt{noGesture} & 57.60 & 100.0 & 73.10 & 85.92 & 97.60 & \textbf{91.39} \\
+\midrule
+\textbf{Macro Avg} & 74.89 & 70.67 & 68.76 & \textbf{77.32} & \textbf{72.00} & \textbf{72.60} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Model Complexity and Computational Cost}
+\label{tab:cost}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model Architecture} & \textbf{Trainable Parameters} & \textbf{Training Time} & \textbf{Inference Latency} \\
+\midrule
+Algorithm 1: Base CNN & 135,114 & $\sim$180 s/epoch & 39.94 ms/seq \\
+Algorithm 2: Base CNN-LSTM [1] & 11,650,470 & $\sim$320 s/epoch & 49.17 ms/seq \\
+Algorithm 3: Enhanced CNN & 5,753,098 & $\sim$210 s/epoch & 41.20 ms/seq \\
+Algorithm 4: Proposed Model & 6,050,890 & $\sim$132 s/epoch & 53.84 ms/seq \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Post-Processed Confusion Matrix of the Proposed Model on the Validation Cohort (750 Sequences)}
+\label{tab:cm}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Actual \textbackslash\ Pred} & \textbf{Fist} & \textbf{Open} & \textbf{Pinch} & \textbf{WaveIn} & \textbf{WaveOut} & \textbf{NoGesture} \\
+\midrule
+\textbf{Fist}      & \textbf{66} & 0           & 50          & 5           & 0           & 4           \\
+\textbf{Open}      & 5           & \textbf{62} & 58          & 0           & 0           & 0           \\
+\textbf{Pinch}     & 1           & 8           & \textbf{86} & 15          & 0           & 15          \\
+\textbf{WaveIn}    & 0           & 0           & 8           & \textbf{117}& 0           & 0           \\
+\textbf{WaveOut}   & 0           & 34          & 3           & 0           & \textbf{87} & 1           \\
+\textbf{NoGesture} & 0           & 0           & 3           & 0           & 0           & \textbf{122}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Quantitative Analysis}
+Comparing Algorithm 1 (Base CNN) and Algorithm 2 (Base CNN-LSTM) confirms the observations of Barona L{\'o}pez et al. [1]: adding recurrent cells improves post-processed sequence accuracy from 62.40\% to 70.67\% (+8.27 percentage points) and Macro F1 from 55.54\% to 68.76\% (+13.22 percentage points). In our trial-level setting, temporal recurrence captures continuous contraction dynamics that frame-independent CNNs miss.
+
+Algorithm 3 (Enhanced CNN with Focal Loss) achieved only 42.80\% accuracy, demonstrating that without recurrent temporal context, frame-independent focal loss leads to severe gradient instability during transient gesture onsets.
+
+Algorithm 4 (Proposed AttnInceptionHGR) reached the highest overall sequence accuracy (72.00\%) and highest Macro F1-score (72.60\%), improving over the reference base paper by +1.33\% in accuracy (10 additional correct sequences out of 750) and +3.84 percentage points in Macro F1.
+
+\subsection{Comparative Analysis Against Base Paper}
+Table~\ref{tab:comparison_base} presents the direct head-to-head comparison between the published base paper [1] and our implemented models.
+
+\begin{table}[h]
+\centering
+\caption{Comparison with the Base Paper}
+\label{tab:comparison_base}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{Base Paper [1]} & \textbf{Base CNN-LSTM} & \textbf{Proposed Model} \\
+& \textbf{(Published)} & \textbf{(Our Reproduction)} & \textbf{(AttnInceptionHGR)} \\
+\midrule
+Post-Proc. Accuracy & 90.55\% $\pm$ 9.45\% & 70.67\% & \textbf{72.00\%} \\
+Macro Precision & Not reported & 74.89\% & \textbf{77.32\%} \\
+Macro Recall & Not reported & 70.67\% & \textbf{72.00\%} \\
+Macro F1-Score & Not reported & 68.76\% & \textbf{72.60\%} \\
+noGesture Precision & 98.6\% (on 306 users) & 57.60\% & \textbf{85.92\%} \\
+Recurrent Input Dim & 22,464 & 22,464 & \textbf{256 (-88.6\%)} \\
+Model Learnables & 11.65 Million & 11.65 Million & \textbf{6.05 Million} \\
+Tested Subjects & 306 subjects & 5 subjects & 5 subjects \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Discussion of Results}
+
+\textbf{Reduction of Active Gestures Misclassified as Resting State.} In the baseline CNN-LSTM, 92 active gesture sequences (20 \texttt{fist}, 13 \texttt{open}, 49 \texttt{pinch}, 9 \texttt{waveIn}, 1 \texttt{waveOut}) were erroneously misclassified as \texttt{noGesture}, caused by Cross-Entropy loss succumbing to the 68.4\% resting frame dominance (precision = 57.60\%). Our proposed model reduced these active gesture sequences misclassified as \texttt{noGesture} to **20** (a **78.26\% reduction in missed gestures**), raising resting-class precision to 85.92\% and F1 to 91.39\% (+18.29 percentage points). Concurrently, 3 actual resting trials were misclassified as \texttt{pinch} (slight false activation during rest, yielding 97.60\% recall vs. 100.0\% in the baseline).
+
+\textbf{Resolution of Crosstalk vs. Class-Specific Trade-offs.} For \texttt{waveOut}, the proposed model achieved **100.0\% precision** (0 false positives), completely preventing erroneous wrist extension commands during other actions. However, \texttt{waveOut} recall dropped from 97.60\% to 69.60\% due to 34 trials being misclassified as \texttt{open}, reflecting remaining shared extensor activation. For \texttt{pinch}, recall doubled from 34.40\% to 68.80\% (F1: 47.25\% to 51.65\%), but precision was constrained to 41.35\% due to false positives from \texttt{fist} (50 trials) and \texttt{open} (58 trials) due to partial finger flexion overlap.
+
+\textbf{Inference Latency and Real-Time Considerations.} On a quad-core CPU, average offline inference latency was 53.84 ms per continuous sequence, comfortably below the 100--125 ms controller delay threshold cited in prosthetic literature [14], [15].
+
+\textbf{Limitations.} (1) The evaluation uses 5 training subjects and 5 validation subjects; absolute accuracies cannot be compared directly with the 90.55\% reported on 306 subjects in [1]. (2) Single-run execution without confidence intervals. (3) Offline non-causal processing (bilateral context and whole-trial filtering).
+
+\section{Conclusion}
+This paper implemented and compared four sEMG gesture recognition architectures based on the benchmark of Barona L{\'o}pez et al. [1]. By introducing Squeeze-and-Excitation channel attention, a 256-dimensional bottleneck projection, a Bidirectional LSTM, and Class-Weighted Focal Loss, the proposed \texttt{AttnInceptionHGR} architecture achieved 72.00\% sequence accuracy and 72.60\% Macro F1 on the EMG-EPN-612 validation cohort, outperforming our re-implementation of the baseline CNN-LSTM (+3.84 percentage points Macro F1) and cutting missed active gestures misclassified as resting state by 78.26\%. Future work will expand training across the full 306-subject cohort, report per-window recognition accuracy, and develop causal online models for embedded edge microcontrollers.
+
+\begin{thebibliography}{15}
+\bibitem{barona2024}
+E.~Barona~L{\'o}pez, F.~M.~Ferri, J.~Zea, {\'A}.~L.~Valdivieso~Caraguay, and M.~E.~Benalc{\'a}zar, ``CNN-LSTM and post-processing for EMG-based hand gesture recognition,'' \emph{Intelligent Systems with Applications}, vol.~21, p.~200352, 2024, doi: 10.1016/j.iswa.2024.200352.
+\bibitem{hudgins1993}
+B.~Hudgins, P.~Parker, and R.~N.~Scott, ``A new strategy for multifunction myoelectric control,'' \emph{IEEE Trans. Biomed. Eng.}, vol.~40, no.~1, pp.~82--94, 1993.
+\bibitem{phinyomark2012}
+A.~Phinyomark, P.~Phukpattaranont, and C.~Limsakul, ``Feature reduction and selection for EMG signal classification,'' \emph{Expert Syst. Appl.}, vol.~39, no.~8, pp.~7420--7431, 2012.
+\bibitem{atzori2016}
+M.~Atzori et al., ``Deep learning with convolutional neural networks applied to electromyography data: A resource for the classification of movements for prosthetic hands,'' \emph{Front. Neurorobot.}, vol.~10, p.~9, 2016.
+\bibitem{coteallard2019}
+U.~C{\^o}t{\'e}-Allard et al., ``Deep learning for electromyographic hand gesture recognition: A review,'' \emph{IEEE Trans. Neural Syst. Rehabil. Eng.}, vol.~27, no.~4, pp.~560--573, 2019.
+\bibitem{hu2018}
+J.~Hu, L.~Shen, and G.~Sun, ``Squeeze-and-excitation networks,'' in \emph{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2018, pp.~7132--7141.
+\bibitem{zhang2023}
+X.~Zhang et al., ``Channel-attention mechanisms for multi-channel electromyography feature recalibration in robotic control,'' \emph{IEEE Trans. Cybern.}, vol.~53, no.~9, pp.~5612--5624, 2023.
+\bibitem{benalcazar2020}
+M.~E.~Benalc{\'a}zar, L.~Barona, L.~Valdivieso, X.~Aguas, and J.~Zea, ``EMG-EPN-612 dataset,'' \emph{Zenodo}, 2020, doi: 10.5281/zenodo.4421500.
+\bibitem{szegedy2015}
+C.~Szegedy et al., ``Going deeper with convolutions,'' in \emph{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2015, pp.~1--9.
+\bibitem{graves2005}
+A.~Graves and J.~Schmidhuber, ``Framewise phoneme classification with bidirectional LSTM and other neural network architectures,'' \emph{Neural Netw.}, vol.~18, no.~5-6, pp.~602--610, 2005.
+\bibitem{vaswani2017}
+A.~Vaswani et al., ``Attention is all you need,'' in \emph{Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol.~30, pp.~5998--6008, 2017.
+\bibitem{lin2020}
+T.-Y.~Lin, P.~Goyal, R.~Girshick, K.~He, and P.~Doll{\'a}r, ``Focal loss for dense object detection,'' \emph{IEEE Trans. Pattern Anal. Mach. Intell.}, vol.~42, no.~2, pp.~318--327, 2020.
+\bibitem{zea2019}
+J.~A.~Zea and M.~E.~Benalc{\'a}zar, ``Real-time hand gesture recognition: A long short-term memory approach with electromyography,'' in \emph{Proc. CSEI}, 2019, pp.~155--167.
+\bibitem{farrell2007}
+T.~R.~Farrell and R.~F.~Weir, ``The optimal controller delay for myoelectric prostheses,'' \emph{IEEE Trans. Neural Syst. Rehabil. Eng.}, vol.~15, no.~1, pp.~111--118, 2007.
+\bibitem{benatti2017}
+S.~Benatti et al., ``A sub-10mW real-time implementation for EMG hand gesture recognition based on a multi-core biomedical SoC,'' in \emph{Proc. IEEE IWASI}, 2017, pp.~139--144.
+\end{thebibliography}
+
+\end{document}

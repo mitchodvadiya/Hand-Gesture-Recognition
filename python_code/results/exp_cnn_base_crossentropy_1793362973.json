@@ -1,0 +1,173 @@
+{
+    "experiment_name": "exp_cnn_base_crossentropy_1793362973",
+    "timestamp": 1793362973,
+    "config": {
+        "model": "cnn_base",
+        "loss": "crossentropy",
+        "epochs": 2,
+        "batch_size": 64,
+        "learning_rate": 0.001,
+        "max_users": 5,
+        "focal_gamma": null,
+        "label_smoothing": 0.05,
+        "augmentation_enabled": false,
+        "class_weights": {
+            "fist": 1.18,
+            "open": 1.164,
+            "pinch": 1.182,
+            "waveIn": 1.164,
+            "waveOut": 1.196,
+            "noGesture": 0.113
+        }
+    },
+    "training_time_min": 7.25,
+    "best_checkpoint": "D:\\SEM_5\\DSIP\\Research_Code\\python_code\\checkpoints\\best_model_cnn_base_crossentropy.pth",
+    "best_validation_metrics": {
+        "total_samples": 750,
+        "total_correct": 398,
+        "accuracy": 53.07,
+        "macro_precision": 51.45,
+        "macro_recall": 53.07,
+        "macro_f1": 46.61,
+        "per_class": {
+            "fist": {
+                "precision": 100.0,
+                "recall": 40.8,
+                "f1_score": 57.95,
+                "support": 125,
+                "true_positives": 51,
+                "false_positives": 0,
+                "false_negatives": 74
+            },
+            "open": {
+                "precision": 38.46,
+                "recall": 16.0,
+                "f1_score": 22.6,
+                "support": 125,
+                "true_positives": 20,
+                "false_positives": 32,
+                "false_negatives": 105
+            },
+            "pinch": {
+                "precision": 10.0,
+                "recall": 1.6,
+                "f1_score": 2.76,
+                "support": 125,
+                "true_positives": 2,
+                "false_positives": 18,
+                "false_negatives": 123
+            },
+            "waveIn": {
+                "precision": 68.94,
+                "recall": 88.8,
+                "f1_score": 77.62,
+                "support": 125,
+                "true_positives": 111,
+                "false_positives": 50,
+                "false_negatives": 14
+            },
+            "waveOut": {
+                "precision": 43.2,
+                "recall": 71.2,
+                "f1_score": 53.78,
+                "support": 125,
+                "true_positives": 89,
+                "false_positives": 117,
+                "false_negatives": 36
+            },
+            "noGesture": {
+                "precision": 48.08,
+                "recall": 100.0,
+                "f1_score": 64.94,
+                "support": 125,
+                "true_positives": 125,
+                "false_positives": 135,
+                "false_negatives": 0
+            }
+        },
+        "confusion_matrix": [
+            [
+                51,
+                2,
+                1,
+                34,
+                7,
+                30
+            ],
+            [
+                0,
+                20,
+                4,
+                2,
+                70,
+                29
+            ],
+            [
+                0,
+                18,
+                2,
+                14,
+                40,
+                51
+            ],
+            [
+                0,
+                0,
+                0,
+                111,
+                0,
+                14
+            ],
+            [
+                0,
+                12,
+                13,
+                0,
+                89,
+                11
+            ],
+            [
+                0,
+                0,
+                0,
+                0,
+                0,
+                125
+            ]
+        ],
+        "class_names": [
+            "fist",
+            "open",
+            "pinch",
+            "waveIn",
+            "waveOut",
+            "noGesture"
+        ]
+    },
+    "epoch_history": [
+        {
+            "epoch": 1,
+            "train_loss": 0.9342,
+            "train_frame_acc": 79.91,
+            "val_loss": 1.0351,
+            "val_raw_accuracy": 53.33,
+            "val_post_accuracy": 53.07,
+            "val_macro_precision": 51.45,
+            "val_macro_recall": 53.07,
+            "val_macro_f1": 46.61,
+            "epoch_duration_sec": 195.71
+        },
+        {
+            "epoch": 2,
+            "train_loss": 0.5182,
+            "train_frame_acc": 91.03,
+            "val_loss": 1.0162,
+            "val_raw_accuracy": 52.13,
+            "val_post_accuracy": 52.0,
+            "val_macro_precision": 58.6,
+            "val_macro_recall": 52.0,
+            "val_macro_f1": 41.34,
+            "epoch_duration_sec": 239.35
+        }
+    ]
+}

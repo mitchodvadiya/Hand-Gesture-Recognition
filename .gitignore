@@ -1,0 +1,25 @@
+# Large dataset and generated cache
+EMG-EPN612 Dataset/
+EMG-EPN-612 dataset/
+python_code/data_cache/
+
+# Python temporary files
+__pycache__/
+*.pyc
+*.pyo
+
+# Backup files
+*.bak
+*.backup
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

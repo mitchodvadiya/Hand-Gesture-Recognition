@@ -1,0 +1,7 @@
+Actual \ Predicted,fist,open,pinch,waveIn,waveOut,noGesture
+fist,31,36,16,36,0,6
+open,0,81,10,20,14,0
+pinch,0,64,15,43,1,2
+waveIn,0,6,2,117,0,0
+waveOut,0,13,0,52,60,0
+noGesture,0,4,0,104,0,17

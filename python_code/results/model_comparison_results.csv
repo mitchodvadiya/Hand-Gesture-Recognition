@@ -1,0 +1,5 @@
+Model,Training enhancement,Checkpoint,Checkpoint epoch,Raw accuracy (%),Post-processed accuracy (%),Raw macro F1 (%),Post-processed macro F1 (%),Training duration (s),Inference latency (ms/sequence),Samples
+cnn_base,None,D:\SEM_5\DSIP\Research_Code\python_code\checkpoints\best_model_cnn_base_crossentropy.pth,1,63.07,62.4,56.45,55.54,0.0,39.944,750
+cnn_enhanced,Augmentation + focal loss,D:\SEM_5\DSIP\Research_Code\python_code\checkpoints\best_model_cnn_enhanced_focal.pth,1,42.93,42.8,39.64,39.43,0.0,41.202,750
+cnn_lstm_base,None,D:\SEM_5\DSIP\Research_Code\python_code\checkpoints\best_model_base_crossentropy.pth,1,71.07,70.67,69.12,68.76,0.0,49.1694,750
+cnn_lstm_enhanced,Augmentation + focal loss,D:\SEM_5\DSIP\Research_Code\python_code\checkpoints\best_model_cnn_lstm_enhanced_focal.pth,5,71.87,72.0,72.5,72.6,660.95,53.8446,750

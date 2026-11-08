@@ -1,0 +1,16 @@
+Metric,Value
+Overall Accuracy (%),58.48
+Macro Precision (%),61.91
+Macro Recall (%),58.48
+Macro F1-Score (%),52.29
+Weighted F1-Score (%),52.29
+Total Evaluated Samples,9300
+Total Correct Predictions,5439
+
+Gesture,Precision (%),Recall (%),F1-Score (%),Support,TP,FP,FN
+fist,68.33,61.68,64.84,1550,956,443,594
+open,71.65,5.87,10.85,1550,91,36,1459
+pinch,56.61,20.71,30.33,1550,321,246,1229
+waveIn,63.74,74.39,68.65,1550,1153,656,397
+waveOut,45.18,90.13,60.19,1550,1397,1695,153
+noGesture,65.96,98.13,78.89,1550,1521,785,29

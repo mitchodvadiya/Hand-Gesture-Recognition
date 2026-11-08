@@ -1,0 +1,260 @@
+{
+  "model": "cnn_lstm_enhanced",
+  "checkpoint": "D:\\SEM_5\\DSIP\\Research_Code\\python_code\\checkpoints\\best_model_cnn_lstm_enhanced_focal.pth",
+  "checkpoint_epoch": 5,
+  "loss_type": "focal",
+  "augmentation": true,
+  "max_users": 5,
+  "raw_metrics": {
+    "total_samples": 750,
+    "total_correct": 539,
+    "accuracy": 71.87,
+    "macro_precision": 77.27,
+    "macro_recall": 71.87,
+    "macro_f1": 72.5,
+    "weighted_precision": 77.27,
+    "weighted_recall": 71.87,
+    "weighted_f1": 72.5,
+    "per_class": {
+      "fist": {
+        "precision": 91.67,
+        "recall": 52.8,
+        "f1_score": 67.01,
+        "support": 125,
+        "true_positives": 66,
+        "false_positives": 6,
+        "false_negatives": 59
+      },
+      "open": {
+        "precision": 59.62,
+        "recall": 49.6,
+        "f1_score": 54.15,
+        "support": 125,
+        "true_positives": 62,
+        "false_positives": 42,
+        "false_negatives": 63
+      },
+      "pinch": {
+        "precision": 41.15,
+        "recall": 68.8,
+        "f1_score": 51.5,
+        "support": 125,
+        "true_positives": 86,
+        "false_positives": 123,
+        "false_negatives": 39
+      },
+      "waveIn": {
+        "precision": 85.4,
+        "recall": 93.6,
+        "f1_score": 89.31,
+        "support": 125,
+        "true_positives": 117,
+        "false_positives": 20,
+        "false_negatives": 8
+      },
+      "waveOut": {
+        "precision": 100.0,
+        "recall": 69.6,
+        "f1_score": 82.08,
+        "support": 125,
+        "true_positives": 87,
+        "false_positives": 0,
+        "false_negatives": 38
+      },
+      "noGesture": {
+        "precision": 85.82,
+        "recall": 96.8,
+        "f1_score": 90.98,
+        "support": 125,
+        "true_positives": 121,
+        "false_positives": 20,
+        "false_negatives": 4
+      }
+    },
+    "confusion_matrix": [
+      [
+        66,
+        0,
+        50,
+        5,
+        0,
+        4
+      ],
+      [
+        5,
+        62,
+        58,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        8,
+        86,
+        15,
+        0,
+        15
+      ],
+      [
+        0,
+        0,
+        8,
+        117,
+        0,
+        0
+      ],
+      [
+        0,
+        34,
+        3,
+        0,
+        87,
+        1
+      ],
+      [
+        0,
+        0,
+        4,
+        0,
+        0,
+        121
+      ]
+    ],
+    "class_names": [
+      "fist",
+      "open",
+      "pinch",
+      "waveIn",
+      "waveOut",
+      "noGesture"
+    ]
+  },
+  "postprocessed_metrics": {
+    "total_samples": 750,
+    "total_correct": 540,
+    "accuracy": 72.0,
+    "macro_precision": 77.32,
+    "macro_recall": 72.0,
+    "macro_f1": 72.6,
+    "weighted_precision": 77.32,
+    "weighted_recall": 72.0,
+    "weighted_f1": 72.6,
+    "per_class": {
+      "fist": {
+        "precision": 91.67,
+        "recall": 52.8,
+        "f1_score": 67.01,
+        "support": 125,
+        "true_positives": 66,
+        "false_positives": 6,
+        "false_negatives": 59
+      },
+      "open": {
+        "precision": 59.62,
+        "recall": 49.6,
+        "f1_score": 54.15,
+        "support": 125,
+        "true_positives": 62,
+        "false_positives": 42,
+        "false_negatives": 63
+      },
+      "pinch": {
+        "precision": 41.35,
+        "recall": 68.8,
+        "f1_score": 51.65,
+        "support": 125,
+        "true_positives": 86,
+        "false_positives": 122,
+        "false_negatives": 39
+      },
+      "waveIn": {
+        "precision": 85.4,
+        "recall": 93.6,
+        "f1_score": 89.31,
+        "support": 125,
+        "true_positives": 117,
+        "false_positives": 20,
+        "false_negatives": 8
+      },
+      "waveOut": {
+        "precision": 100.0,
+        "recall": 69.6,
+        "f1_score": 82.08,
+        "support": 125,
+        "true_positives": 87,
+        "false_positives": 0,
+        "false_negatives": 38
+      },
+      "noGesture": {
+        "precision": 85.92,
+        "recall": 97.6,
+        "f1_score": 91.39,
+        "support": 125,
+        "true_positives": 122,
+        "false_positives": 20,
+        "false_negatives": 3
+      }
+    },
+    "confusion_matrix": [
+      [
+        66,
+        0,
+        50,
+        5,
+        0,
+        4
+      ],
+      [
+        5,
+        62,
+        58,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        8,
+        86,
+        15,
+        0,
+        15
+      ],
+      [
+        0,
+        0,
+        8,
+        117,
+        0,
+        0
+      ],
+      [
+        0,
+        34,
+        3,
+        0,
+        87,
+        1
+      ],
+      [
+        0,
+        0,
+        3,
+        0,
+        0,
+        122
+      ]
+    ],
+    "class_names": [
+      "fist",
+      "open",
+      "pinch",
+      "waveIn",
+      "waveOut",
+      "noGesture"
+    ]
+  },
+  "training_seconds": 660.95,
+  "inference_latency_ms_per_sequence": 53.8446
+}
