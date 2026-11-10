@@ -39,6 +39,24 @@ python_code/
 ```
 
 ---
+## 📥 Dataset Download & Setup
+
+This project uses the publicly available **EMG-EPN-612 dataset**.
+
+- **Dataset:** EMG-EPN-612
+- **Source:** Zenodo
+- **DOI:** 10.5281/zenodo.4421500
+- **Download:** https://doi.org/10.5281/zenodo.4421500
+
+### Download Instructions
+
+1. Open the [EMG-EPN-612 dataset on Zenodo](https://doi.org/10.5281/zenodo.4421500).
+2. Download the dataset files.
+3. Extract the downloaded files.
+4. Place the extracted dataset in the location specified in `python_code/config.py`.
+5. Check the dataset paths before running the training scripts.
+
+**Note:** The original dataset and generated preprocessing cache are not included in this GitHub repository because of their large size. Users must download the dataset separately before training or evaluation.
 
 ## 🚀 Quickstart Guide
 
